@@ -63,3 +63,39 @@ function custom_checkout_enqueue_styles() {
     wp_enqueue_style('custom-checkout-styles', plugin_dir_url(__FILE__) . 'assets/css/custom-checkout.css');
 }
 add_action('wp_enqueue_scripts', 'custom_checkout_enqueue_styles');
+
+// Add a Function to Send Data to Laravel API
+function send_order_data_to_api($order_id) {
+    $order = wc_get_order($order_id);
+    $custom_field = get_post_meta($order_id, 'Custom Field', true);
+
+    // Prepare the data to send
+    $body = array(
+        'custom_field' => $custom_field,
+        'order_id' => $order_id,
+    );
+
+    // Set the API endpoint
+    $api_url = 'https://your-laravel-api.com/api/order-data';
+
+    // Send the data to the Laravel API
+    $response = wp_remote_post($api_url, array(
+        'method'    => 'POST',
+        'body'      => json_encode($body),
+        'headers'   => array(
+            'Authorization' => 'Bearer ' . 'your_api_token', // if your API requires authentication
+            'Content-Type'  => 'application/json',
+        ),
+    ));
+
+    // Check for errors
+    if (is_wp_error($response)) {
+        $error_message = $response->get_error_message();
+        error_log('Error sending data to API: ' . $error_message);
+    } else {
+        $response_body = wp_remote_retrieve_body($response);
+        error_log('API Response: ' . $response_body);
+    }
+}
+
+add_action('woocommerce_thankyou', 'send_order_data_to_api');
